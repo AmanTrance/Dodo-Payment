@@ -23,8 +23,12 @@ pub(crate) async fn open_rabbitmq_channel(
     let transactions_channel: Channel = connection.open_channel(None).await?;
     let events_channel: Channel = connection.open_channel(None).await?;
 
-    transactions_channel.register_callback(DefaultChannelCallback).await?;
-    events_channel.register_callback(DefaultChannelCallback).await?;
+    transactions_channel
+        .register_callback(DefaultChannelCallback)
+        .await?;
+    events_channel
+        .register_callback(DefaultChannelCallback)
+        .await?;
 
     Ok((transactions_channel, events_channel, connection))
 }

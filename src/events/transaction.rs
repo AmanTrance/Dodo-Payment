@@ -18,13 +18,14 @@ pub(crate) struct TransactionHandlerDTO {
 pub(crate) async fn setup_transaction_handler(
     postgres: Arc<tokio_postgres::Client>,
     rabbitmq: Channel,
+    queue_name: String
 ) -> () {
     let consumer_tag: String = uuid::Uuid::new_v4().to_string();
 
     let (_, mut rabbitmq_recv) = match rabbitmq
         .basic_consume_rx(
             BasicConsumeArguments::default()
-                .queue("transactions".into())
+                .queue(queue_name)
                 .auto_ack(true)
                 .consumer_tag(consumer_tag)
                 .finish(),
@@ -55,6 +56,10 @@ pub(crate) async fn setup_transaction_handler(
                 .await
                 .unwrap();
                 if user_balance < transaction_dto.amount {
+                    let _ = postgres.execute_raw::<str, &str, Vec<&str>>(format!(
+                        r#"INSERT INTO transactions (from_user, to_user, user_id, amount, tx_status) VALUES ($1, $2, $3, {}, 'FAILED')"#
+                    , transaction_dto.amount).as_str(), vec![&transaction_dto.from, &transaction_dto.to, &transaction_dto.from]).await;
+
                     let sse_event_dto: super::ChannelDTO = super::ChannelDTO {
                         user_id: transaction_dto.from.clone(),
                         event_name: "Failure".into(),
