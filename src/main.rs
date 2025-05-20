@@ -30,7 +30,7 @@ async fn main() {
             }
         };
 
-    let (rabbitmq_sender_channel, connection) =
+    let (transactions_channel_rabbitmq, events_channel_rabbitmq, connection) =
         match rabbit::open_rabbitmq_channel("rabbitmq", 5672, "guest", "guest").await {
             Ok(result) => result,
             Err(e) => {
@@ -43,29 +43,50 @@ async fn main() {
 
     let (event_sender, event_receiver) = unbounded_channel::<EventHandlerDTO>();
 
-    let queue_name =
-        match crate::rabbit::setup_channel_and_queues(&rabbitmq_sender_channel, "test", "", "")
-            .await
-        {
-            Ok(value) => value,
-            Err(e) => {
-                let mut std_out: std::io::Stdout = std::io::stdout();
-                std_out.write_all(e.to_string().as_bytes()).unwrap();
-                std_out.flush().unwrap();
-                std::process::exit(1);
-            }
-        };
+    let transactions_queue_name = match crate::rabbit::setup_channel_and_queues(
+        &transactions_channel_rabbitmq,
+        "transactions",
+        "amq.direct",
+        "transactions",
+    )
+    .await
+    {
+        Ok(value) => value,
+        Err(e) => {
+            let mut std_out: std::io::Stdout = std::io::stdout();
+            std_out.write_all(e.to_string().as_bytes()).unwrap();
+            std_out.flush().unwrap();
+            std::process::exit(1);
+        }
+    };
+
+    let events_queue_name = match crate::rabbit::setup_channel_and_queues(
+        &events_channel_rabbitmq,
+        "events",
+        "amq.fanout",
+        "events",
+    )
+    .await
+    {
+        Ok(value) => value,
+        Err(e) => {
+            let mut std_out: std::io::Stdout = std::io::stdout();
+            std_out.write_all(e.to_string().as_bytes()).unwrap();
+            std_out.flush().unwrap();
+            std::process::exit(1);
+        }
+    };
 
     tokio::spawn(crate::events::setup_event_handler(
         event_receiver,
-        rabbitmq_sender_channel.clone(),
-        queue_name,
+        transactions_channel_rabbitmq.clone(),
+        events_queue_name,
     ));
 
     let router: std::sync::Arc<router::Router> = std::sync::Arc::<router::Router>::new(
         router::Router::new(
             postgres_connection,
-            rabbitmq_sender_channel,
+            transactions_channel_rabbitmq,
             event_sender.clone(),
         )
         .await,

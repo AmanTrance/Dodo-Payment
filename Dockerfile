@@ -1,4 +1,4 @@
-FROM rust:latest
+FROM rust:latest AS build
 
 RUN mkdir /dodo
 
@@ -12,7 +12,9 @@ RUN cargo build --release --target x86_64-unknown-linux-musl
 
 RUN mv /dodo/target/x86_64-unknown-linux-musl/release/dodo-payment / && strip /dodo-payment
 
-RUN rm -rf /dodo
+FROM ubuntu:latest AS main
+
+COPY --from=build /dodo-payment /
 
 EXPOSE 11000
 

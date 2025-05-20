@@ -9,7 +9,7 @@ pub(crate) async fn open_rabbitmq_channel(
     port: u16,
     username: &str,
     password: &str,
-) -> Result<(Channel, amqprs::connection::Connection), amqprs::error::Error> {
+) -> Result<(Channel, Channel, amqprs::connection::Connection), amqprs::error::Error> {
     let options: OpenConnectionArguments =
         OpenConnectionArguments::new(host, port, username, password);
 
@@ -20,11 +20,13 @@ pub(crate) async fn open_rabbitmq_channel(
         .register_callback(DefaultConnectionCallback)
         .await?;
 
-    let channel: Channel = connection.open_channel(None).await?;
+    let transactions_channel: Channel = connection.open_channel(None).await?;
+    let events_channel: Channel = connection.open_channel(None).await?;
 
-    channel.register_callback(DefaultChannelCallback).await?;
+    transactions_channel.register_callback(DefaultChannelCallback).await?;
+    events_channel.register_callback(DefaultChannelCallback).await?;
 
-    Ok((channel, connection))
+    Ok((transactions_channel, events_channel, connection))
 }
 
 pub(crate) async fn setup_channel_and_queues(

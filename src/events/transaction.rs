@@ -1,6 +1,9 @@
-use std::sync::Arc;
+use std::{io::Write, sync::Arc};
 
-use amqprs::{channel::{BasicConsumeArguments, BasicPublishArguments, Channel}, BasicProperties};
+use amqprs::{
+    BasicProperties,
+    channel::{BasicConsumeArguments, BasicPublishArguments, Channel},
+};
 use hyper::body::Bytes;
 use serde::{Deserialize, Serialize};
 
@@ -21,6 +24,7 @@ pub(crate) async fn setup_transaction_handler(
     let (_, mut rabbitmq_recv) = match rabbitmq
         .basic_consume_rx(
             BasicConsumeArguments::default()
+                .queue("transactions".into())
                 .auto_ack(true)
                 .consumer_tag(consumer_tag)
                 .finish(),
@@ -28,7 +32,12 @@ pub(crate) async fn setup_transaction_handler(
         .await
     {
         Ok(result) => result,
-        Err(_) => std::process::exit(0),
+        Err(e) => {
+            let mut std_out: std::io::Stdout = std::io::stdout();
+            std_out.write_all(e.to_string().as_bytes()).unwrap();
+            std_out.flush().unwrap();
+            std::process::exit(1);
+        }
     };
 
     let value = rabbitmq_recv.recv().await;
@@ -39,17 +48,34 @@ pub(crate) async fn setup_transaction_handler(
                 let transaction_dto: TransactionHandlerDTO =
                     serde_json::from_slice(&buffer).unwrap();
 
-                let user_balance: f64 = crate::database::helpers::transaction::get_user_balance(postgres.as_ref(), &transaction_dto.from).await.unwrap();
+                let user_balance: f64 = crate::database::helpers::transaction::get_user_balance(
+                    postgres.as_ref(),
+                    &transaction_dto.from,
+                )
+                .await
+                .unwrap();
                 if user_balance < transaction_dto.amount {
                     let sse_event_dto: super::ChannelDTO = super::ChannelDTO {
                         user_id: transaction_dto.from.clone(),
                         event_name: "Failure".into(),
-                        event_data: Bytes::from(serde_json::to_string(&transaction_dto).unwrap()).to_vec()
+                        event_data: Bytes::from(serde_json::to_string(&transaction_dto).unwrap())
+                            .to_vec(),
                     };
 
-                    let _ = rabbitmq.basic_publish(BasicProperties::default(), serde_json::to_vec(&sse_event_dto).unwrap(), BasicPublishArguments::default()).await;
+                    let _ = rabbitmq
+                        .basic_publish(
+                            BasicProperties::default()
+                                .with_content_type("application/json")
+                                .with_content_encoding("utf-8")
+                                .finish(),
+                            serde_json::to_vec(&sse_event_dto).unwrap(),
+                            BasicPublishArguments::default()
+                                .exchange("amq.fanout".into())
+                                .routing_key("events".into())
+                                .finish(),
+                        )
+                        .await;
                 } else {
-                    
                 }
             }
 

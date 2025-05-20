@@ -7,7 +7,7 @@ pub(crate) struct EventStreamBody {
 }
 
 impl EventStreamBody {
-    pub(crate) fn _new(receiver: tokio::sync::mpsc::Receiver<Bytes>) -> Self {
+    pub(crate) fn new(receiver: tokio::sync::mpsc::Receiver<Bytes>) -> Self {
         Self {
             receiver,
             is_finished: false,

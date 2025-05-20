@@ -30,7 +30,11 @@ pub(crate) async fn setup_event_handler(
     let mut map: HashMap<String, tokio::sync::mpsc::Sender<Bytes>> = HashMap::new();
     let consumer_tag: String = uuid::Uuid::new_v4().to_string();
     let consumer_arguments: BasicConsumeArguments =
-        BasicConsumeArguments::new(&queue_name, &consumer_tag);
+        BasicConsumeArguments::default()
+            .queue(queue_name)
+            .auto_ack(true)
+            .consumer_tag(consumer_tag)
+            .finish();
 
     let (_, mut rabbit_receiver) = match rabbit_channel.basic_consume_rx(consumer_arguments).await {
         Ok(result) => result,

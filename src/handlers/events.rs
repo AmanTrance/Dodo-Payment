@@ -30,7 +30,7 @@ pub(crate) fn get_events(
             .header("Cache-Control", "no-cache")
             .header("Connection", "keep-alive")
             .status(200)
-            .body(Either::Right(crate::router::stream::EventStreamBody::_new(
+            .body(Either::Right(crate::router::stream::EventStreamBody::new(
                 receiver,
             )))
     })
