@@ -1,6 +1,7 @@
 pub mod auth;
 pub mod middleware;
 pub mod profile;
+pub mod upi;
 
 use hmac::{Hmac, Mac, digest::InvalidLength};
 use http_body_util::{Either, Full};

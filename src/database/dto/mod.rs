@@ -35,3 +35,14 @@ pub(crate) mod user {
         pub(crate) avatar: Option<String>,
     }
 }
+
+pub(crate) mod upi {
+    use serde::Serialize;
+
+    #[derive(Debug, Serialize)]
+    pub(crate) struct UpiGetDTO {
+        pub(crate) created_at: chrono::NaiveDateTime,
+        pub(crate) upi_id: String,
+        pub(crate) is_default: bool,
+    }
+}

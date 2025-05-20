@@ -220,6 +220,7 @@ version = "0.1.0"
 dependencies = [
  "bcrypt",
  "chrono",
+ "futures-util",
  "hmac",
  "http-body-util",
  "hyper",

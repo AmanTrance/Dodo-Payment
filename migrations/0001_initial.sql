@@ -17,6 +17,7 @@ CREATE TABLE public.users (
 
 CREATE TABLE public.upis (
     upi_id TEXT PRIMARY KEY,
+    is_default BOOLEAN DEFAULT FALSE,
     created_by TEXT NOT NULL,
     CONSTRAINT fk_created_by_upis FOREIGN KEY (created_by) REFERENCES public.users (id) ON DELETE CASCADE
 );

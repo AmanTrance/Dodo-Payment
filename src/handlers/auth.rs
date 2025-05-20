@@ -62,7 +62,7 @@ pub(crate) fn handle_signup(
                             },
 
                             Err(_) => {
-                                crate::utils::generate_error_response(400, "User Already Exists")
+                                crate::utils::generate_error_response(400, "User Already Exists With Either Email Or Username")
                             }
                         }
                     }
@@ -133,7 +133,7 @@ pub(crate) fn handle_signin(
                 }
             }
 
-            Err(_) => crate::utils::generate_error_response(400, "Bad Request"),
+            Err(_) => crate::utils::generate_error_response(500, "Internal Server Error"),
         }
     })
 }

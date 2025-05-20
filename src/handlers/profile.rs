@@ -8,7 +8,7 @@ use hyper::{
 };
 
 use crate::{
-    database::dto::user::{UserProfileGetDTO, UserProfileUpdateDTO},
+    database::dto::user::UserProfileUpdateDTO,
     router::Router,
 };
 
@@ -102,34 +102,13 @@ pub(crate) fn handle_get_profile(
     Box::pin(async move {
         let user_id: &str = request.headers().get("user_id").unwrap().to_str().unwrap();
 
-        match context
-            .postgres
-            .query_one(
-                r#"
-            SELECT created_at, username, email, city, state, country, avatar FROM users WHERE id = $1
-        "#,
-                &[&user_id],
-            )
-            .await
-        {
-            Ok(user) => {
-                let user_profile_dto: UserProfileGetDTO = UserProfileGetDTO {
-                    created_at: user.get::<&str, Option<chrono::NaiveDateTime>>("created_at"),
-                    username: user.get::<&str, Option<String>>("username"),
-                    email: user.get::<&str, Option<String>>("email"),
-                    city: user.get::<&str, Option<String>>("city"),
-                    state: user.get::<&str, Option<String>>("state"),
-                    country: user.get::<&str, Option<String>>("country"),
-                    avatar: user.get::<&str, Option<String>>("avatar"),
-                };
-
-                Response::builder()
-                    .header("Content-Type", "application/json")
-                    .status(200)
-                    .body(Either::Left(Full::from(Bytes::from_owner(
-                        serde_json::to_string(&user_profile_dto).unwrap(),
-                    ))))
-            }
+        match crate::database::helpers::user::get_user_by_id(&context.postgres, user_id).await {
+            Ok(user) => Response::builder()
+                .header("Content-Type", "application/json")
+                .status(200)
+                .body(Either::Left(Full::from(Bytes::from(
+                    serde_json::to_vec(&user).unwrap(),
+                )))),
 
             Err(_) => crate::utils::generate_error_response(500, "Internal Server Error"),
         }
