@@ -35,7 +35,7 @@ pub(crate) mod transaction {
                     WHEN (from_user IS NOT NULL AND to_user IS NULL AND is_external = FALSE) THEN amount
                     ELSE amount
                 END
-            ) AS balance FROM transactions WHERE user_id = $1 GROUP BY user_id
+            ) AS balance FROM transactions WHERE user_id = $1 AND tx_status = 'SUCCESS' GROUP BY user_id
         "#, &[&user_id]).await?;
 
         let balance: f64 = row.get::<&str, f64>("balance");

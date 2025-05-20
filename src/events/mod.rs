@@ -4,6 +4,14 @@ use std::collections::HashMap;
 
 use amqprs::channel::BasicConsumeArguments;
 use hyper::body::Bytes;
+use serde::{Deserialize, Serialize};
+
+#[derive(Debug, Serialize, Deserialize)]
+pub(crate) struct ChannelDTO {
+    pub(crate) user_id: String,
+    pub(crate) event_name: String,
+    pub(crate) event_data: Vec<u8>,
+}
 
 #[derive(Debug)]
 pub(crate) enum EventHandlerDTO {
@@ -54,7 +62,7 @@ pub(crate) async fn setup_event_handler(
                     Some(message) => {
                         match message.content {
                             Some(value) => {
-                                let event_dto: crate::rabbit::dto::ChannelDTO = serde_json::from_slice(&value).unwrap();
+                                let event_dto: ChannelDTO = serde_json::from_slice(&value).unwrap();
                                 match map.get(&event_dto.user_id) {
                                     Some(sender) => {
                                         let _ = sender.send(Bytes::from(format!(

@@ -20,7 +20,7 @@ pub(crate) fn get_events(
 
         let _ = context
             .register
-            .send(crate::EventHandlerDTO::RegisterSender {
+            .send(crate::events::EventHandlerDTO::RegisterSender {
                 user_id: user_id.into(),
                 sender,
             });

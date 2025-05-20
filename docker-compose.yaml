@@ -5,12 +5,27 @@ networks:
     driver: bridge
 
 services:
-  # postgres:
-  #   image: postgres:latest
-  #   ports:
-  #     - 5432:5432
-  #   networks:
-  #     - dodo
+  dodo:
+    build:
+      context: .
+    depends_on:
+      - postgres
+      - rabbitmq
+    ports:
+      - 11000:11000
+    networks:
+      - dodo
+  
+  postgres:
+    image: postgres:latest
+    ports:
+      - 5432:5432
+    networks:
+      - dodo
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_DB=postgres
+      - POSTGRES_PASSWORD=postgres
   
   rabbitmq:
     image: rabbitmq:latest

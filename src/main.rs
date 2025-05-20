@@ -31,7 +31,7 @@ async fn main() {
         };
 
     let (rabbitmq_sender_channel, connection) =
-        match rabbit::open_rabbitmq_channel("localhost", 5672, "guest", "guest").await {
+        match rabbit::open_rabbitmq_channel("rabbitmq", 5672, "guest", "guest").await {
             Ok(result) => result,
             Err(e) => {
                 let mut std_out: std::io::Stdout = std::io::stdout();
@@ -44,7 +44,9 @@ async fn main() {
     let (event_sender, event_receiver) = unbounded_channel::<EventHandlerDTO>();
 
     let queue_name =
-        match crate::rabbit::setup_channel_and_queues(&rabbitmq_sender_channel, "test").await {
+        match crate::rabbit::setup_channel_and_queues(&rabbitmq_sender_channel, "test", "", "")
+            .await
+        {
             Ok(value) => value,
             Err(e) => {
                 let mut std_out: std::io::Stdout = std::io::stdout();
@@ -103,7 +105,7 @@ async fn main() {
             _ = tokio::signal::ctrl_c() => {
                 let _ = connection.close().await;
                 event_sender.send(EventHandlerDTO::StopHandler).unwrap();
-                tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+                tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
                 std::process::exit(0);
             }
         }

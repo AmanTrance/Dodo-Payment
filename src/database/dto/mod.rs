@@ -61,4 +61,15 @@ pub(crate) mod transaction {
         pub(crate) to: Option<String>,
         pub(crate) amount: Option<f64>,
     }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub(crate) struct GetTransactionDTO {
+        pub(crate) id: i64,
+        pub(crate) tx_time: chrono::NaiveDateTime,
+        pub(crate) from: Option<String>,
+        pub(crate) to: Option<String>,
+        pub(crate) amount: f64,
+        pub(crate) is_external: bool,
+        pub(crate) tx_status: String,
+    }
 }

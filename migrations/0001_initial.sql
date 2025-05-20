@@ -31,6 +31,7 @@ CREATE TABLE public.transactions (
     to_user TEXT NULL,
     amount NUMERIC NOT NULL,
     is_external BOOLEAN DEFAULT FALSE,
+    tx_status TEXT NOT NULL,
     CONSTRAINT fk_user_transactions FOREIGN KEY (user_id) REFERENCES public.users (id) ON DELETE CASCADE,
     CONSTRAINT fk_from_user_transactions FOREIGN KEY (from_user) REFERENCES public.users (id) ON DELETE CASCADE,
     CONSTRAINT fk_to_user_transactions FOREIGN KEY (to_user) REFERENCES public.users (id) ON DELETE CASCADE

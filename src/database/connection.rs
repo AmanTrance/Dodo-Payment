@@ -6,7 +6,7 @@ pub async fn create_postgres_connection()
     let mut error = None;
 
     for i in 1..=50 {
-        match tokio_postgres::connect("host=localhost port=5432 user=postgres password=postgres dbname=postgres sslmode=disable", NoTls).await {
+        match tokio_postgres::connect("host=postgres port=5432 user=postgres password=postgres dbname=postgres sslmode=disable", NoTls).await {
             Ok (result) => {
                 tokio::spawn((async move || {
                     match result.1.await {
