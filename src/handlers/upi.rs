@@ -1,7 +1,7 @@
 use std::sync::Arc;
 
 use futures_util::TryStreamExt;
-use http_body_util::{Either, Full};
+use http_body_util::{BodyExt, Collected, Either, Full};
 use hyper::{
     Request, Response,
     body::{Bytes, Incoming},
@@ -49,6 +49,57 @@ pub(crate) fn get_upis(
             }
 
             Err(_) => crate::utils::generate_error_response(500, "Internal Server Error"),
+        }
+    })
+}
+
+pub(crate) fn fund_upi(
+    context: Arc<crate::router::context::Context>,
+    mut request: Request<Incoming>,
+) -> <Router as Service<Request<Incoming>>>::Future {
+    Box::pin(async move {
+        let body: Result<Collected<Bytes>, hyper::Error> = request.body_mut().collect().await;
+        let user_id: &str = request.headers().get("user_id").unwrap().to_str().unwrap();
+
+        match body {
+            Ok(bytes) => {
+                if let Ok(user) = serde_json::from_slice::<crate::database::dto::upi::FundUpiDTO>(
+                    bytes.to_bytes().as_ref(),
+                ) {
+                    match context
+                        .postgres
+                        .query_one(
+                            r#"
+                        SELECT created_by FROM upis WHERE upi_id = $1
+                    "#,
+                            &[&user_id],
+                        )
+                        .await
+                    {
+                        Ok(row) => {
+                            let query_user_id: String = row.get::<&str, String>("created_by");
+                            if user_id[..] == query_user_id[..] {
+                                // context.rabbitmq.basic_publish(basic_properties, content, args)
+
+                                Response::builder()
+                                    .header("Content-Type", "application/json")
+                                    .status(200)
+                                    .body(Either::Left(Full::from(Bytes::from(format!(
+                                        "{{\"message\":\"Your Transaction will be Processed Shortly\"}}"
+                            )))))
+                            } else {
+                                crate::utils::generate_error_response(401, "Unauthorized access")
+                            }
+                        }
+
+                        Err(_) => crate::utils::generate_error_response(400, "UPI not found"),
+                    }
+                } else {
+                    crate::utils::generate_error_response(400, "Bad Request")
+                }
+            }
+
+            Err(_) => crate::utils::generate_error_response(400, "Bad Request"),
         }
     })
 }

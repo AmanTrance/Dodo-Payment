@@ -21,3 +21,25 @@ pub(crate) mod user {
         Ok(user)
     }
 }
+
+pub(crate) mod transaction {
+
+    pub(crate) async fn get_user_balance(
+        client: &tokio_postgres::Client,
+        user_id: &str,
+    ) -> Result<f64, tokio_postgres::Error> {
+        let row: tokio_postgres::Row = client.query_one(r#"
+            SELECT SUM(
+                CASE 
+                    WHEN (from_user IS NULL AND to_user IS NOT NULL AND is_external = FALSE) THEN (-1) * amount
+                    WHEN (from_user IS NOT NULL AND to_user IS NULL AND is_external = FALSE) THEN amount
+                    ELSE amount
+                END
+            ) AS balance FROM transactions WHERE user_id = $1 GROUP BY user_id
+        "#, &[&user_id]).await?;
+
+        let balance: f64 = row.get::<&str, f64>("balance");
+
+        Ok(balance)
+    }
+}

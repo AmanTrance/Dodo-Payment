@@ -2,6 +2,7 @@ pub mod auth;
 pub mod events;
 pub mod middleware;
 pub mod profile;
+pub mod transaction;
 pub mod upi;
 
 use hmac::{Hmac, Mac, digest::InvalidLength};

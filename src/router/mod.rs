@@ -60,6 +60,20 @@ impl Service<Request<Incoming>> for Router {
                 crate::handlers::upi::get_upis,
             ),
 
+            ("/v1/upi/fund", "POST") => crate::handlers::with_middlewares(
+                request,
+                Arc::clone(&self.0),
+                vec![crate::handlers::middleware::verify_user],
+                crate::handlers::upi::get_upis,
+            ),
+
+            ("/v1/account/balance", "GET") => crate::handlers::with_middlewares(
+                request,
+                Arc::clone(&self.0),
+                vec![crate::handlers::middleware::verify_user],
+                crate::handlers::transaction::get_user_balance,
+            ),
+
             ("/v1/events", "GET") => crate::handlers::with_middlewares(
                 request,
                 Arc::clone(&self.0),

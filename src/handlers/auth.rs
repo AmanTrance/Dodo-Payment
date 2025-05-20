@@ -38,22 +38,38 @@ pub(crate) fn handle_signup(
                             INSERT INTO users (id, username, email, password) VALUES ($1, $2, $3, $4)
                         "#,
                                 vec![
-                                    user.id.as_mut().unwrap().clone(),
-                                    user.username.unwrap(),
+                                    user.id.as_ref().unwrap().clone(),
+                                    user.username.as_ref().unwrap().clone(),
                                     user.email.unwrap(),
                                     user.password.unwrap(),
                                 ],
                             )
                             .await
                         {
-                            Ok(_) => match super::generate_jwt(user.id.unwrap().as_str()) {
-                                Ok(token) => Response::builder()
-                                    .header("Content-Type", "application/json")
-                                    .status(200)
-                                    .body(Either::Left(Full::from(format!(
-                                        "{{\"token\":\"{}\"}}",
-                                        token
-                                    )))),
+                            Ok(_) => match super::generate_jwt(user.id.as_ref().unwrap()) {
+                                Ok(token) => {
+                                    let user_upi: String = format!("{}@dodo", user.username.unwrap());
+                                    match context.postgres.execute_raw(r#"
+                                        INSERT INTO upis (upi_id, is_default, created_by) VALUES ($1, TRUE, $3)
+                                    "#, vec![
+                                        user_upi.clone(),
+                                        user.id.unwrap()
+                                    ]).await {
+                                        Ok(_) => {
+                                            Response::builder()
+                                                .header("Content-Type", "application/json")
+                                                .status(200)
+                                                .body(Either::Left(Full::from(Bytes::from(format!(
+                                                    "{{\"token\":\"{}\", \"upi_id\":\"{}\"}}"
+                                            ,token, user_upi)))))
+                                        }
+
+                                        Err(_) => crate::utils::generate_error_response(
+                                            500,
+                                            "Internal Server Error",
+                                        ),
+                                    }
+                                }
 
                                 Err(_) => crate::utils::generate_error_response(
                                     500,

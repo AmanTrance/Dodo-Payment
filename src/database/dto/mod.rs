@@ -37,12 +37,28 @@ pub(crate) mod user {
 }
 
 pub(crate) mod upi {
-    use serde::Serialize;
+    use serde::{Deserialize, Serialize};
 
     #[derive(Debug, Serialize)]
     pub(crate) struct UpiGetDTO {
         pub(crate) created_at: chrono::NaiveDateTime,
         pub(crate) upi_id: String,
         pub(crate) is_default: bool,
+    }
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub(crate) struct FundUpiDTO {
+        pub(crate) upi_id: Option<String>,
+        pub(crate) amount: Option<f64>,
+    }
+}
+
+pub(crate) mod transaction {
+    use serde::{Deserialize, Serialize};
+
+    #[derive(Debug, Serialize, Deserialize)]
+    pub(crate) struct CreateTransactionDTO {
+        pub(crate) to: Option<String>,
+        pub(crate) amount: Option<f64>,
     }
 }

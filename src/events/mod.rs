@@ -1,3 +1,5 @@
+pub mod transaction;
+
 use std::collections::HashMap;
 
 use amqprs::channel::BasicConsumeArguments;
@@ -75,7 +77,9 @@ pub(crate) async fn setup_event_handler(
             _ = tokio::time::sleep(tokio::time::Duration::from_secs(10)) => {
                 let mut unused_ids: Vec<String> = vec![];
                 for (key, value) in map.iter() {
-                    match value.send(Bytes::from("event: ping\ndata: {\"status\":\"alive\"}\n\n")).await {
+                    match value.send(Bytes::from(
+                        "event: ping\ndata: {\"status\":\"alive\"}\n\n"
+                    )).await {
                         Ok(_) => (),
 
                         Err(_) => {
