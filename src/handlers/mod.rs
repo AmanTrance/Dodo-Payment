@@ -1,4 +1,5 @@
 pub mod auth;
+pub mod events;
 pub mod middleware;
 pub mod profile;
 pub mod upi;

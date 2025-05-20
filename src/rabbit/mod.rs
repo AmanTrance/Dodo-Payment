@@ -11,7 +11,7 @@ pub mod dto {
 
 use amqprs::{
     callbacks::{DefaultChannelCallback, DefaultConnectionCallback},
-    channel::Channel,
+    channel::{Channel, QueueBindArguments, QueueDeclareArguments},
     connection::OpenConnectionArguments,
 };
 
@@ -20,7 +20,7 @@ pub(crate) async fn open_rabbitmq_channel(
     port: u16,
     username: &str,
     password: &str,
-) -> Result<Channel, amqprs::error::Error> {
+) -> Result<(Channel, amqprs::connection::Connection), amqprs::error::Error> {
     let options: OpenConnectionArguments =
         OpenConnectionArguments::new(host, port, username, password);
 
@@ -35,5 +35,23 @@ pub(crate) async fn open_rabbitmq_channel(
 
     channel.register_callback(DefaultChannelCallback).await?;
 
-    Ok(channel)
+    Ok((channel, connection))
+}
+
+pub(crate) async fn setup_channel_and_queues(
+    channel: &Channel,
+    queue_name: &str,
+) -> Result<String, amqprs::error::Error> {
+    let result: Option<(String, u32, u32)> = channel
+        .queue_declare(
+            QueueDeclareArguments::durable_client_named(queue_name)
+                .no_wait(false)
+                .finish(),
+        )
+        .await?;
+    let _ = channel
+        .queue_bind(QueueBindArguments::new(queue_name, "amq.direct", "dodo"))
+        .await;
+
+    Ok(result.unwrap().0)
 }

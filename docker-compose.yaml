@@ -1,0 +1,20 @@
+version: '3.9'
+
+networks:
+  dodo:
+    driver: bridge
+
+services:
+  # postgres:
+  #   image: postgres:latest
+  #   ports:
+  #     - 5432:5432
+  #   networks:
+  #     - dodo
+  
+  rabbitmq:
+    image: rabbitmq:latest
+    ports:
+      - 5672:5672
+    networks:
+      - dodo

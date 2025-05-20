@@ -1,10 +1,7 @@
-mod consumer;
-
-use std::{collections::HashMap, sync::Arc};
+use std::collections::HashMap;
 
 use amqprs::channel::BasicConsumeArguments;
 use hyper::body::Bytes;
-use tokio::sync::RwLock;
 
 #[derive(Debug)]
 pub(crate) enum EventHandlerDTO {
@@ -16,15 +13,19 @@ pub(crate) enum EventHandlerDTO {
 }
 
 pub(crate) async fn setup_event_handler(
-    mut receiver: tokio::sync::mpsc::Receiver<EventHandlerDTO>,
+    mut receiver: tokio::sync::mpsc::UnboundedReceiver<EventHandlerDTO>,
     rabbit_channel: amqprs::channel::Channel,
-    queue_name: &str,
+    queue_name: String,
 ) -> () {
-    let map: Arc<RwLock<HashMap<String, tokio::sync::mpsc::Sender<Bytes>>>> =
-        Arc::new(RwLock::new(HashMap::new()));
+    let mut map: HashMap<String, tokio::sync::mpsc::Sender<Bytes>> = HashMap::new();
     let consumer_tag: String = uuid::Uuid::new_v4().to_string();
     let consumer_arguments: BasicConsumeArguments =
-        BasicConsumeArguments::new(queue_name, &consumer_tag);
+        BasicConsumeArguments::new(&queue_name, &consumer_tag);
+
+    let (_, mut rabbit_receiver) = match rabbit_channel.basic_consume_rx(consumer_arguments).await {
+        Ok(result) => result,
+        Err(_) => std::process::exit(0),
+    };
 
     'outer: loop {
         tokio::select! {
@@ -33,8 +34,7 @@ pub(crate) async fn setup_event_handler(
                     Some (dto) => {
                         match dto {
                             EventHandlerDTO::RegisterSender { user_id, sender } => {
-                                let mut safe_map: tokio::sync::RwLockWriteGuard<'_, HashMap<String, tokio::sync::mpsc::Sender<Bytes>>> = map.write().await;
-                                safe_map.insert(user_id, sender);
+                                map.insert(user_id, sender);
                             }
 
                             EventHandlerDTO::StopHandler => {
@@ -47,7 +47,48 @@ pub(crate) async fn setup_event_handler(
                 }
             }
 
-            _ = rabbit_channel.basic_consume(consumer::EventConsumer::new(Arc::clone(&map)), consumer_arguments.clone()) => ()
+            content = rabbit_receiver.recv() => {
+                match content {
+                    Some(message) => {
+                        match message.content {
+                            Some(value) => {
+                                let event_dto: crate::rabbit::dto::ChannelDTO = serde_json::from_slice(&value).unwrap();
+                                match map.get(&event_dto.user_id) {
+                                    Some(sender) => {
+                                        let _ = sender.send(Bytes::from(format!(
+                                            "event: {}\ndata: {}\n\n"
+                                        , event_dto.event_name, String::from_utf8(event_dto.event_data).unwrap()))).await;
+                                    }
+
+                                    None => ()
+                                }
+                            }
+
+                            None => ()
+                        }
+                    }
+
+                    None => ()
+                }
+            }
+
+            _ = tokio::time::sleep(tokio::time::Duration::from_secs(10)) => {
+                let mut unused_ids: Vec<String> = vec![];
+                for (key, value) in map.iter() {
+                    match value.send(Bytes::from("event: ping\ndata: {\"status\":\"alive\"}\n\n")).await {
+                        Ok(_) => (),
+
+                        Err(_) => {
+                            unused_ids.push(key.clone());
+                            ()
+                        }
+                    }
+                }
+
+                for id in unused_ids.iter() {
+                    let _ = map.remove(id);
+                }
+            }
         }
     }
 

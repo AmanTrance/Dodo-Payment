@@ -10,39 +10,6 @@ use hyper::{
 
 use crate::{database::dto::upi::UpiGetDTO, router::Router};
 
-pub(crate) fn create_upi(
-    context: Arc<crate::router::context::Context>,
-    request: Request<Incoming>,
-) -> <Router as Service<Request<Incoming>>>::Future {
-    Box::pin(async move {
-        let user_id: &str = request.headers().get("user_id").unwrap().to_str().unwrap();
-
-        match crate::database::helpers::user::get_user_by_id(&context.postgres, user_id).await {
-            Ok(_) => {
-                match context
-                    .postgres
-                    .execute_raw::<str, &str, Vec<&str>>(
-                        r#"
-                    INSERT INTO upis (upi_id, created_by) VALUES ($1, $2)
-                "#,
-                        vec![user_id],
-                    )
-                    .await
-                {
-                    Ok(_) => Response::builder()
-                        .header("Content-Type", "application/json")
-                        .status(200)
-                        .body(Either::Left(Full::from(Bytes::from("")))),
-
-                    Err(_) => crate::utils::generate_error_response(500, "Internal Server Error"),
-                }
-            }
-
-            Err(_) => crate::utils::generate_error_response(500, "Internal Server Error"),
-        }
-    })
-}
-
 pub(crate) fn get_upis(
     context: Arc<crate::router::context::Context>,
     request: Request<Incoming>,
