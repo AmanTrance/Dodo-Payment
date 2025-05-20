@@ -4,6 +4,8 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+amqprs = "2.1.1"
+async-trait = "0.1.88"
 bcrypt = "0.17.0"
 chrono = { version = "0.4.41", features = ["serde"] }
 futures-util = "0.3.31"

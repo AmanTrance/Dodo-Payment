@@ -54,14 +54,15 @@ pub(crate) fn get_upis(
             .postgres
             .query_raw::<str, &str, Vec<&str>>(
                 r#"
-            SELECT upi_id FROM upis WHERE created_by = $1
+            SELECT created_at, upi_id, is_default FROM upis WHERE created_by = $1
         "#,
                 vec![user_id],
             )
             .await
         {
             Ok(rows) => {
-                let mut upis: Vec<UpiGetDTO> = vec![];
+                let mut upis: Vec<UpiGetDTO> =
+                    Vec::with_capacity(rows.rows_affected().unwrap() as usize);
                 tokio::pin!(rows);
 
                 while let Ok(Some(row)) = rows.try_next().await {
@@ -80,10 +81,7 @@ pub(crate) fn get_upis(
                     ))))
             }
 
-            Err(e) => {
-                println!("{}", e.to_string());
-                crate::utils::generate_error_response(500, "Internal Server Error")
-            }
+            Err(_) => crate::utils::generate_error_response(500, "Internal Server Error"),
         }
     })
 }

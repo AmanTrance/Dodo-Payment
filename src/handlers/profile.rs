@@ -7,10 +7,7 @@ use hyper::{
     service::Service,
 };
 
-use crate::{
-    database::dto::user::UserProfileUpdateDTO,
-    router::Router,
-};
+use crate::{database::dto::user::UserProfileUpdateDTO, router::Router};
 
 pub(crate) fn handle_profile_update(
     context: Arc<super::super::router::context::Context>,
@@ -64,8 +61,6 @@ pub(crate) fn handle_profile_update(
 
                         update_query.pop();
                         update_query.push_str(format!(" WHERE id = '{}'", user_id).as_str());
-
-                        println!("{}", update_query);
 
                         match context
                             .postgres
