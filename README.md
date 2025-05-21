@@ -5,6 +5,8 @@
 > Just do `docker compose up -d`
 
 
+### The server will be running on port 11000
+
 # REQUEST/RESPONSE DOCS
 
 *NOTE* ALL Error Responses always has a field `error` with the error message
