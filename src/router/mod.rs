@@ -67,6 +67,13 @@ impl Service<Request<Incoming>> for Router {
                 crate::handlers::upi::fund_upi,
             ),
 
+            ("/v1/transaction/create", "POST") => crate::handlers::with_middlewares(
+                request,
+                Arc::clone(&self.0),
+                vec![crate::handlers::middleware::verify_user],
+                crate::handlers::transaction::create_transaction,
+            ),
+
             ("/v1/transaction/list", "GET") => crate::handlers::with_middlewares(
                 request,
                 Arc::clone(&self.0),
@@ -74,12 +81,13 @@ impl Service<Request<Incoming>> for Router {
                 crate::handlers::transaction::get_transactions_list,
             ),
 
-            // ("/v1/account/balance", "GET") => crate::handlers::with_middlewares(
-            //     request,
-            //     Arc::clone(&self.0),
-            //     vec![crate::handlers::middleware::verify_user],
-            //     crate::handlers::transaction::get_user_balance,
-            // ),
+            ("/v1/account/balance", "GET") => crate::handlers::with_middlewares(
+                request,
+                Arc::clone(&self.0),
+                vec![crate::handlers::middleware::verify_user],
+                crate::handlers::transaction::get_user_balance,
+            ),
+
             ("/v1/events", "GET") => crate::handlers::with_middlewares(
                 request,
                 Arc::clone(&self.0),

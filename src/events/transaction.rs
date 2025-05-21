@@ -42,7 +42,6 @@ pub(crate) async fn setup_transaction_handler(
     };
 
     loop {
-        
         tokio::select! {
             value = rabbitmq_recv.recv() => {
                 match value {
@@ -50,25 +49,25 @@ pub(crate) async fn setup_transaction_handler(
                         Some(buffer) => {
                             let transaction_dto: TransactionHandlerDTO =
                                 serde_json::from_slice(&buffer).unwrap();
-            
+
                             let user_balance: f64 = crate::database::helpers::transaction::get_user_balance(
                                 &postgres,
                                 &transaction_dto.from,
                             )
                             .await;
-            
+
                             if transaction_dto.is_external {
                                 let _ = postgres.execute_raw::<str, &str, Vec<&str>>(format!(
                                     r#"INSERT INTO transactions (from_user, to_user, user_id, amount, tx_status, is_external) VALUES (NULL, NULL, $1, {}, 'SUCCESS', TRUE)"#
                                 , transaction_dto.amount).as_str(), vec![&transaction_dto.to]).await;
-            
+
                                 let sse_event_dto: super::ChannelDTO = super::ChannelDTO {
                                     user_id: transaction_dto.from.clone(),
                                     event_name: "Success".into(),
                                     event_data: Bytes::from(serde_json::to_string(&transaction_dto).unwrap())
                                         .to_vec(),
                                 };
-            
+
                                 let _ = rabbitmq
                                     .basic_publish(
                                         BasicProperties::default()
@@ -82,22 +81,22 @@ pub(crate) async fn setup_transaction_handler(
                                             .finish(),
                                     )
                                     .await;
-            
+
                                 return ();
                             }
-            
+
                             if user_balance < transaction_dto.amount {
                                 let _ = postgres.execute_raw::<str, &str, Vec<&str>>(format!(
                                     r#"INSERT INTO transactions (from_user, to_user, user_id, amount, tx_status) VALUES ($1, $2, $3, {}, 'FAILED')"#
                                 , transaction_dto.amount).as_str(), vec![&transaction_dto.from, &transaction_dto.to, &transaction_dto.from]).await;
-            
+
                                 let sse_event_dto: super::ChannelDTO = super::ChannelDTO {
                                     user_id: transaction_dto.from.clone(),
                                     event_name: "Failure".into(),
                                     event_data: Bytes::from(serde_json::to_string(&transaction_dto).unwrap())
                                         .to_vec(),
                                 };
-            
+
                                 let _ = rabbitmq
                                     .basic_publish(
                                         BasicProperties::default()
@@ -115,18 +114,18 @@ pub(crate) async fn setup_transaction_handler(
                                 let _ = postgres.execute_raw::<str, &str, Vec<&str>>(format!(
                                     r#"INSERT INTO transactions (from_user, to_user, user_id, amount, tx_status) VALUES (NULL, $1, $2, {}, 'SUCCESS')"#
                                 , transaction_dto.amount).as_str(), vec![&transaction_dto.to, &transaction_dto.from]).await;
-            
+
                                 let _ = postgres.execute_raw::<str, &str, Vec<&str>>(format!(
                                     r#"INSERT INTO transactions (from_user, to_user, user_id, amount, tx_status) VALUES ($1, NULL, $2, {}, 'RECEIVED')"#
                                 , transaction_dto.amount).as_str(), vec![&transaction_dto.from, &transaction_dto.to]).await;
-            
+
                                 let sse_event_dto: super::ChannelDTO = super::ChannelDTO {
                                     user_id: transaction_dto.from.clone(),
                                     event_name: "Success".into(),
                                     event_data: Bytes::from(serde_json::to_string(&transaction_dto).unwrap())
                                         .to_vec(),
                                 };
-            
+
                                 let _ = rabbitmq
                                     .basic_publish(
                                         BasicProperties::default()
@@ -142,10 +141,10 @@ pub(crate) async fn setup_transaction_handler(
                                     .await;
                             }
                         }
-            
+
                         None => (),
                     },
-            
+
                     None => (),
                 }
             }
