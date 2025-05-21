@@ -70,14 +70,16 @@ pub(crate) fn create_transaction(
                                 )))))
                         }
 
-                        Err(_) => crate::utils::generate_error_response(400, "UPI not found"),
+                        Err(_) => {
+                            crate::utils::generate_error_response(400, "Sender UPI Not Exist")
+                        }
                     }
                 } else {
                     crate::utils::generate_error_response(400, "Bad Request")
                 }
             }
 
-            Err(_) => crate::utils::generate_error_response(400, "Bad Request"),
+            Err(_) => crate::utils::generate_error_response(500, "Internal Server Error"),
         }
     })
 }
@@ -123,10 +125,8 @@ pub(crate) fn get_transactions_list(
                     ))))
             }
 
-            Err(e) => {
-                println!("{}", e.to_string());
-                crate::utils::generate_error_response(500, "Internal Server Error")
-            },
+            Err(_) => crate::utils::generate_error_response(500, "Internal Server Error")
+
         }
     })
 }

@@ -45,7 +45,7 @@ async fn main() {
         .args(
                 [
                     "-dir",
-                    "/migrations",
+                    "/",
                     "postgres", 
                     "host=postgres port=5432 user=postgres password=postgres dbname=postgres sslmode=disable", 
                     "up"
@@ -158,7 +158,7 @@ async fn main() {
                 let _ = connection.close().await;
                 event_sender.send(EventHandlerDTO::StopHandler).unwrap();
                 oneshot_sender.send(0).await.unwrap();
-                tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
+                tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
                 std::process::exit(0);
             }
         }
