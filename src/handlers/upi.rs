@@ -1,5 +1,6 @@
 use std::sync::Arc;
 
+use amqprs::{BasicProperties, channel::BasicPublishArguments};
 use futures_util::TryStreamExt;
 use http_body_util::{BodyExt, Collected, Either, Full};
 use hyper::{
@@ -8,7 +9,9 @@ use hyper::{
     service::Service,
 };
 
-use crate::{database::dto::upi::UpiGetDTO, router::Router};
+use crate::{
+    database::dto::upi::UpiGetDTO, events::transaction::TransactionHandlerDTO, router::Router,
+};
 
 pub(crate) fn get_upis(
     context: Arc<crate::router::context::Context>,
@@ -28,8 +31,7 @@ pub(crate) fn get_upis(
             .await
         {
             Ok(rows) => {
-                let mut upis: Vec<UpiGetDTO> =
-                    Vec::with_capacity(rows.rows_affected().unwrap() as usize);
+                let mut upis: Vec<UpiGetDTO> = Vec::new();
                 tokio::pin!(rows);
 
                 while let Ok(Some(row)) = rows.try_next().await {
@@ -72,14 +74,35 @@ pub(crate) fn fund_upi(
                             r#"
                         SELECT created_by FROM upis WHERE upi_id = $1
                     "#,
-                            &[&user_id],
+                            &[&user.upi_id.unwrap()],
                         )
                         .await
                     {
                         Ok(row) => {
                             let query_user_id: String = row.get::<&str, String>("created_by");
                             if user_id[..] == query_user_id[..] {
-                                // context.rabbitmq.basic_publish(basic_properties, content, args)
+                                let transaction_dto: TransactionHandlerDTO =
+                                    TransactionHandlerDTO {
+                                        from: String::from(user_id),
+                                        to: String::from(user_id),
+                                        amount: user.amount.unwrap(),
+                                        is_external: true,
+                                    };
+
+                                let _ = context
+                                    .rabbitmq
+                                    .basic_publish(
+                                        BasicProperties::default()
+                                            .with_content_type("application/json")
+                                            .with_content_encoding("utf-8")
+                                            .finish(),
+                                        serde_json::to_vec(&transaction_dto).unwrap(),
+                                        BasicPublishArguments::default()
+                                            .exchange("amq.direct".into())
+                                            .routing_key("transactions".into())
+                                            .finish(),
+                                    )
+                                    .await;
 
                                 Response::builder()
                                     .header("Content-Type", "application/json")

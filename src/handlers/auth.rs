@@ -50,7 +50,7 @@ pub(crate) fn handle_signup(
                                 Ok(token) => {
                                     let user_upi: String = format!("{}@dodo", user.username.unwrap());
                                     match context.postgres.execute_raw(r#"
-                                        INSERT INTO upis (upi_id, is_default, created_by) VALUES ($1, TRUE, $3)
+                                        INSERT INTO upis (upi_id, is_default, created_by) VALUES ($1, TRUE, $2)
                                     "#, vec![
                                         user_upi.clone(),
                                         user.id.unwrap()
@@ -87,7 +87,7 @@ pub(crate) fn handle_signup(
                 }
             }
 
-            Err(_) => crate::utils::generate_error_response(400, "Bad Request"),
+            Err(_) => crate::utils::generate_error_response(500, "Internal Server Error"),
         }
     })
 }

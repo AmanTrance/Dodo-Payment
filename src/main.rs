@@ -30,8 +30,19 @@ async fn main() {
             }
         };
 
+    let transaction_postgres_connection: tokio_postgres::Client =
+        match database::connection::create_postgres_connection().await {
+            Ok(client) => client,
+            Err(e) => {
+                let mut std_out: std::io::Stdout = std::io::stdout();
+                std_out.write(e.to_string().as_bytes()).unwrap();
+                std_out.flush().unwrap();
+                std::process::exit(1);
+            }
+        };
+
     let (transactions_channel_rabbitmq, events_channel_rabbitmq, connection) =
-        match rabbit::open_rabbitmq_channel("rabbitmq", 5672, "guest", "guest").await {
+        match rabbit::open_rabbitmq_channel("localhost", 5672, "guest", "guest").await {
             Ok(result) => result,
             Err(e) => {
                 let mut std_out: std::io::Stdout = std::io::stdout();
@@ -79,8 +90,14 @@ async fn main() {
 
     tokio::spawn(crate::events::setup_event_handler(
         event_receiver,
-        transactions_channel_rabbitmq.clone(),
+        events_channel_rabbitmq,
         events_queue_name,
+    ));
+
+    tokio::spawn(crate::events::transaction::setup_transaction_handler(
+        transaction_postgres_connection,
+        transactions_channel_rabbitmq.clone(),
+        transactions_queue_name,
     ));
 
     let router: std::sync::Arc<router::Router> = std::sync::Arc::<router::Router>::new(
@@ -126,7 +143,7 @@ async fn main() {
             _ = tokio::signal::ctrl_c() => {
                 let _ = connection.close().await;
                 event_sender.send(EventHandlerDTO::StopHandler).unwrap();
-                tokio::time::sleep(tokio::time::Duration::from_secs(30)).await;
+                tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
                 std::process::exit(0);
             }
         }

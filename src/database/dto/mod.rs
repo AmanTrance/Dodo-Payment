@@ -64,7 +64,7 @@ pub(crate) mod transaction {
 
     #[derive(Debug, Serialize, Deserialize)]
     pub(crate) struct GetTransactionDTO {
-        pub(crate) id: i64,
+        pub(crate) id: i32,
         pub(crate) tx_time: chrono::NaiveDateTime,
         pub(crate) from: Option<String>,
         pub(crate) to: Option<String>,
