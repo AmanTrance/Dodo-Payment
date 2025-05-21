@@ -14,7 +14,7 @@ use std::{
 };
 use tokio::{
     net::{TcpListener, TcpStream},
-    sync::mpsc::unbounded_channel,
+    sync::mpsc::{channel, unbounded_channel},
 };
 
 #[tokio::main]
@@ -41,8 +41,20 @@ async fn main() {
             }
         };
 
+    let _ = tokio::process::Command::new("/goose")
+        .args(
+                [
+                    "-dir",
+                    "/migrations",
+                    "postgres", 
+                    "host=postgres port=5432 user=postgres password=postgres dbname=postgres sslmode=disable", 
+                    "up"
+                ]
+            )
+        .output().await;
+
     let (transactions_channel_rabbitmq, events_channel_rabbitmq, connection) =
-        match rabbit::open_rabbitmq_channel("localhost", 5672, "guest", "guest").await {
+        match rabbit::open_rabbitmq_channel("rabbitmq", 5672, "guest", "guest").await {
             Ok(result) => result,
             Err(e) => {
                 let mut std_out: std::io::Stdout = std::io::stdout();
@@ -51,8 +63,6 @@ async fn main() {
                 std::process::exit(1);
             }
         };
-
-    let (event_sender, event_receiver) = unbounded_channel::<EventHandlerDTO>();
 
     let transactions_queue_name = match crate::rabbit::setup_channel_and_queues(
         &transactions_channel_rabbitmq,
@@ -88,6 +98,9 @@ async fn main() {
         }
     };
 
+    let (event_sender, event_receiver) = unbounded_channel::<EventHandlerDTO>();
+    let (oneshot_sender, oneshot_receiver) = channel(1);
+
     tokio::spawn(crate::events::setup_event_handler(
         event_receiver,
         events_channel_rabbitmq,
@@ -95,6 +108,7 @@ async fn main() {
     ));
 
     tokio::spawn(crate::events::transaction::setup_transaction_handler(
+        oneshot_receiver,
         transaction_postgres_connection,
         transactions_channel_rabbitmq.clone(),
         transactions_queue_name,
@@ -143,6 +157,7 @@ async fn main() {
             _ = tokio::signal::ctrl_c() => {
                 let _ = connection.close().await;
                 event_sender.send(EventHandlerDTO::StopHandler).unwrap();
+                oneshot_sender.send(0).await.unwrap();
                 tokio::time::sleep(tokio::time::Duration::from_secs(10)).await;
                 std::process::exit(0);
             }

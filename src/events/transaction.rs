@@ -6,6 +6,7 @@ use amqprs::{
 };
 use hyper::body::Bytes;
 use serde::{Deserialize, Serialize};
+use tokio::sync::mpsc::Receiver;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(crate) struct TransactionHandlerDTO {
@@ -16,6 +17,7 @@ pub(crate) struct TransactionHandlerDTO {
 }
 
 pub(crate) async fn setup_transaction_handler(
+    mut oneshot_receiver: Receiver<u8>,
     postgres: tokio_postgres::Client,
     rabbitmq: Channel,
     queue_name: String,
@@ -41,7 +43,7 @@ pub(crate) async fn setup_transaction_handler(
         }
     };
 
-    loop {
+    let () = 'outer: loop {
         tokio::select! {
             value = rabbitmq_recv.recv() => {
                 match value {
@@ -81,8 +83,6 @@ pub(crate) async fn setup_transaction_handler(
                                             .finish(),
                                     )
                                     .await;
-
-                                return ();
                             }
 
                             if user_balance < transaction_dto.amount {
@@ -148,6 +148,11 @@ pub(crate) async fn setup_transaction_handler(
                     None => (),
                 }
             }
+
+            _ = oneshot_receiver.recv() => {
+                rabbitmq_recv.close();
+                break 'outer;
+            }
         }
-    }
+    };
 }

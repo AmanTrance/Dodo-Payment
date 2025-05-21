@@ -5,16 +5,16 @@ networks:
     driver: bridge
 
 services:
-  # dodo:
-  #   build:
-  #     context: .
-  #   depends_on:
-  #     - postgres
-  #     - rabbitmq
-  #   ports:
-  #     - 11000:11000
-  #   networks:
-  #     - dodo
+  dodo:
+    build:
+      context: .
+    depends_on:
+      - postgres
+      - rabbitmq
+    ports:
+      - 11000:11000
+    networks:
+      - dodo
   
   postgres:
     image: postgres:latest
