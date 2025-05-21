@@ -83,83 +83,83 @@ pub(crate) async fn setup_transaction_handler(
                                             .finish(),
                                     )
                                     .await;
-                            }
-
-                            if user_balance < transaction_dto.amount {
-                                let _ = postgres.execute_raw::<str, &str, Vec<&str>>(format!(
-                                    r#"INSERT INTO transactions (from_user, to_user, user_id, amount, tx_status) VALUES ($1, $2, $3, {}, 'FAILED')"#
-                                , transaction_dto.amount).as_str(), vec![&transaction_dto.from, &transaction_dto.to, &transaction_dto.from]).await;
-
-                                let sse_event_dto: super::ChannelDTO = super::ChannelDTO {
-                                    user_id: transaction_dto.from.clone(),
-                                    event_name: "Failure".into(),
-                                    event_data: Bytes::from(serde_json::to_string(&transaction_dto).unwrap())
-                                        .to_vec(),
-                                };
-
-                                let _ = rabbitmq
-                                    .basic_publish(
-                                        BasicProperties::default()
-                                            .with_content_type("application/json")
-                                            .with_content_encoding("utf-8")
-                                            .finish(),
-                                        serde_json::to_vec(&sse_event_dto).unwrap(),
-                                        BasicPublishArguments::default()
-                                            .exchange("amq.fanout".into())
-                                            .routing_key("events".into())
-                                            .finish(),
-                                    )
-                                    .await;
                             } else {
-                                let _ = postgres.execute_raw::<str, &str, Vec<&str>>(format!(
-                                    r#"INSERT INTO transactions (from_user, to_user, user_id, amount, tx_status) VALUES (NULL, $1, $2, {}, 'SUCCESS')"#
-                                , transaction_dto.amount).as_str(), vec![&transaction_dto.to, &transaction_dto.from]).await;
+                                if user_balance < transaction_dto.amount {
+                                    let _ = postgres.execute_raw::<str, &str, Vec<&str>>(format!(
+                                        r#"INSERT INTO transactions (from_user, to_user, user_id, amount, tx_status) VALUES ($1, $2, $3, {}, 'FAILED')"#
+                                    , transaction_dto.amount).as_str(), vec![&transaction_dto.from, &transaction_dto.to, &transaction_dto.from]).await;
 
-                                let _ = postgres.execute_raw::<str, &str, Vec<&str>>(format!(
-                                    r#"INSERT INTO transactions (from_user, to_user, user_id, amount, tx_status) VALUES ($1, NULL, $2, {}, 'RECEIVED')"#
-                                , transaction_dto.amount).as_str(), vec![&transaction_dto.from, &transaction_dto.to]).await;
-
-                                let sender_sse_event_dto: super::ChannelDTO = super::ChannelDTO {
-                                    user_id: transaction_dto.from.clone(),
-                                    event_name: "Success".into(),
-                                    event_data: Bytes::from(serde_json::to_string(&transaction_dto).unwrap())
-                                        .to_vec(),
-                                };
-
-                                let receiver_sse_event_dto: super::ChannelDTO = super::ChannelDTO {
-                                    user_id: transaction_dto.to.clone(),
-                                    event_name: "Receive".into(),
-                                    event_data: Bytes::from(serde_json::to_string(&transaction_dto).unwrap())
-                                        .to_vec(),
-                                };
-
-                                let _ = rabbitmq
-                                    .basic_publish(
-                                        BasicProperties::default()
-                                            .with_content_type("application/json")
-                                            .with_content_encoding("utf-8")
-                                            .finish(),
-                                        serde_json::to_vec(&sender_sse_event_dto).unwrap(),
-                                        BasicPublishArguments::default()
-                                            .exchange("amq.fanout".into())
-                                            .routing_key("events".into())
-                                            .finish(),
-                                    )
-                                    .await;
+                                    let sse_event_dto: super::ChannelDTO = super::ChannelDTO {
+                                        user_id: transaction_dto.from.clone(),
+                                        event_name: "Failure".into(),
+                                        event_data: Bytes::from(serde_json::to_string(&transaction_dto).unwrap())
+                                            .to_vec(),
+                                    };
 
                                     let _ = rabbitmq
-                                    .basic_publish(
-                                        BasicProperties::default()
-                                            .with_content_type("application/json")
-                                            .with_content_encoding("utf-8")
-                                            .finish(),
-                                        serde_json::to_vec(&receiver_sse_event_dto).unwrap(),
-                                        BasicPublishArguments::default()
-                                            .exchange("amq.fanout".into())
-                                            .routing_key("events".into())
-                                            .finish(),
-                                    )
-                                    .await;
+                                        .basic_publish(
+                                            BasicProperties::default()
+                                                .with_content_type("application/json")
+                                                .with_content_encoding("utf-8")
+                                                .finish(),
+                                            serde_json::to_vec(&sse_event_dto).unwrap(),
+                                            BasicPublishArguments::default()
+                                                .exchange("amq.fanout".into())
+                                                .routing_key("events".into())
+                                                .finish(),
+                                        )
+                                        .await;
+                                } else {
+                                    let _ = postgres.execute_raw::<str, &str, Vec<&str>>(format!(
+                                        r#"INSERT INTO transactions (from_user, to_user, user_id, amount, tx_status) VALUES (NULL, $1, $2, {}, 'SUCCESS')"#
+                                    , transaction_dto.amount).as_str(), vec![&transaction_dto.to, &transaction_dto.from]).await;
+
+                                    let _ = postgres.execute_raw::<str, &str, Vec<&str>>(format!(
+                                        r#"INSERT INTO transactions (from_user, to_user, user_id, amount, tx_status) VALUES ($1, NULL, $2, {}, 'RECEIVED')"#
+                                    , transaction_dto.amount).as_str(), vec![&transaction_dto.from, &transaction_dto.to]).await;
+
+                                    let sender_sse_event_dto: super::ChannelDTO = super::ChannelDTO {
+                                        user_id: transaction_dto.from.clone(),
+                                        event_name: "Success".into(),
+                                        event_data: Bytes::from(serde_json::to_string(&transaction_dto).unwrap())
+                                            .to_vec(),
+                                    };
+
+                                    let receiver_sse_event_dto: super::ChannelDTO = super::ChannelDTO {
+                                        user_id: transaction_dto.to.clone(),
+                                        event_name: "Receive".into(),
+                                        event_data: Bytes::from(serde_json::to_string(&transaction_dto).unwrap())
+                                            .to_vec(),
+                                    };
+
+                                    let _ = rabbitmq
+                                        .basic_publish(
+                                            BasicProperties::default()
+                                                .with_content_type("application/json")
+                                                .with_content_encoding("utf-8")
+                                                .finish(),
+                                            serde_json::to_vec(&sender_sse_event_dto).unwrap(),
+                                            BasicPublishArguments::default()
+                                                .exchange("amq.fanout".into())
+                                                .routing_key("events".into())
+                                                .finish(),
+                                        )
+                                        .await;
+
+                                    let _ = rabbitmq
+                                        .basic_publish(
+                                            BasicProperties::default()
+                                                .with_content_type("application/json")
+                                                .with_content_encoding("utf-8")
+                                                .finish(),
+                                            serde_json::to_vec(&receiver_sse_event_dto).unwrap(),
+                                            BasicPublishArguments::default()
+                                                .exchange("amq.fanout".into())
+                                                .routing_key("events".into())
+                                                .finish(),
+                                        )
+                                        .await;
+                                }
                             }
                         }
 

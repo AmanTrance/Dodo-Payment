@@ -168,7 +168,15 @@ RESPONSE application/json
 
 ```
 [
-
+    {
+        "id": 5,
+        "tx_time": "2025-05-21T13:14:38.825113",
+        "from": "7a95b711-3268-4654-8931-c43707c04ea0",
+        "to": null,
+        "amount": 1000.0,
+        "is_external": false,
+        "tx_status": "RECEIVED"
+    },
 ]
 ```
 
