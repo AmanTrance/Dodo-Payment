@@ -111,11 +111,11 @@ pub(crate) fn fund_upi(
                                         "{{\"message\":\"Your Transaction will be Processed Shortly\"}}"
                             )))))
                             } else {
-                                crate::utils::generate_error_response(401, "Unauthorized access")
+                                crate::utils::generate_error_response(401, "Unauthorized Access")
                             }
                         }
 
-                        Err(_) => crate::utils::generate_error_response(400, "UPI not found"),
+                        Err(_) => crate::utils::generate_error_response(400, "UPI Not Found"),
                     }
                 } else {
                     crate::utils::generate_error_response(400, "Bad Request")

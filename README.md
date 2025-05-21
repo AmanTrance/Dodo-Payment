@@ -101,6 +101,11 @@ RESPONSE application/json
 
 RESPONSE test/event-stream
 
+```
+    Here comes SSE event stream
+    when you connect with SSE
+```
+
 
 *** GET /v1/upi/list ***
 

@@ -1,6 +1,6 @@
 pub mod transaction;
 
-use std::collections::HashMap;
+use std::{collections::HashMap, io::Write};
 
 use amqprs::channel::BasicConsumeArguments;
 use hyper::body::Bytes;
@@ -37,7 +37,12 @@ pub(crate) async fn setup_event_handler(
 
     let (_, mut rabbit_receiver) = match rabbit_channel.basic_consume_rx(consumer_arguments).await {
         Ok(result) => result,
-        Err(_) => std::process::exit(0),
+        Err(e) => {
+            let mut std_out: std::io::Stdout = std::io::stdout();
+            std_out.write_all(e.to_string().as_bytes()).unwrap();
+            std_out.flush().unwrap();
+            std::process::exit(1);
+        }
     };
 
     'outer: loop {
